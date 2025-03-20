@@ -1,107 +1,160 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Menu, Camera, Image } from "lucide-react";
+import axios from "axios";
 import Sidebar from "./Sidebar";
 import "./fonts.css";
 import "./background.css";
-import axios from "axios";
+import PopUpCard from "./PopUpCard";
+import LoadingOverlay from "./LoadingOverlay";
+// parseResults assumes the backend returns a valid JSON string.
+const parseResults = (output) => {
+  try {
+    return JSON.parse(output);
+  } catch (error) {
+    console.error("Error parsing classification output:", error);
+    return {};
+  }
+};
 
 const Home = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [result, setResult] = useState(null);
+  const [popupData, setPopupData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // Handler for Live Webcam classification.
-  // This should capture an image from the webcam (you might use a separate component)
-  // and then send it to the backend.
-  const handleLiveWebcam = async () => {
-    console.log("Live Webcam button clicked.");
+  // WebcamModal defined inside Home.jsx
+  const WebcamModal = ({ onCapture, onClose }) => {
+    const videoRef = useRef(null);
+    const [stream, setStream] = useState(null);
 
-    try {
-      // Request webcam video stream
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      console.log("Webcam stream acquired.");
-
-      // Create a hidden video element to display the stream
-      const video = document.createElement("video");
-      video.style.display = "none";
-      video.srcObject = stream;
-      document.body.appendChild(video);
-
-      // Start playing the video
-      await video.play();
-      console.log("Video is playing.");
-
-      // Wait briefly to ensure the video is ready
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Create a canvas element to capture a frame from the video
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      console.log("Frame captured from webcam.");
-
-      // Convert the canvas image to a Blob
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          console.error("Failed to create blob from canvas.");
-          return;
-        }
-        console.log("Image blob created from canvas.");
-
-        // Stop the webcam stream and clean up the video element
-        stream.getTracks().forEach((track) => track.stop());
-        video.remove();
-        console.log("Webcam stream stopped and video element removed.");
-
-        // Create FormData and append the blob
-        const formData = new FormData();
-        formData.append("file", blob, "live.jpg");
-        console.log("FormData prepared. Sending to backend at /run-live...");
-
+    useEffect(() => {
+      async function startStream() {
         try {
-          // Post the captured image to the Flask endpoint for live classification
-          const response = await axios.post(
-            "http://localhost:5000/run-live",
-            formData,
-            {
-              headers: { "Content-Type": "multipart/form-data" },
-            }
-          );
-          console.log("Received response from backend:", response.data);
-          setResult(response.data);
-        } catch (err) {
-          console.error("Error sending captured image to backend:", err);
+          const mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          setStream(mediaStream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+            await videoRef.current.play();
+          }
+        } catch (error) {
+          console.error("Error accessing webcam:", error);
+        }
+      }
+      startStream();
+
+      return () => {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      };
+    }, []);
+
+    const handleCapture = () => {
+      if (!videoRef.current) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      // Create a preview URL for the popup
+      const imageDataUrl = canvas.toDataURL("image/jpeg");
+      canvas.toBlob((blob) => {
+        if (blob) {
+          onCapture(imageDataUrl, blob);
         }
       }, "image/jpeg");
-    } catch (error) {
-      console.error("Error accessing the webcam:", error);
-    }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div className="bg-white p-4 rounded shadow-lg relative w-full max-w-3xl">
+          <video ref={videoRef} className="w-full h-auto" autoPlay />
+          <div className="flex justify-end mt-4 space-x-2">
+            <button
+              onClick={handleCapture}
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Capture
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-600 text-white rounded"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  // Handler for Static Image classification
+  // For Live Webcam: simply show the modal.
+  const handleLiveWebcam = () => {
+    setShowWebcamModal(true);
+  };
+
+  // Called when the user manually captures an image from the modal.
+  const handleWebcamCapture = async (imageDataUrl, blob) => {
+    setShowWebcamModal(false);
+    setLoading(true);
+    setLoadingMessage("Classifying image...");
+    const formData = new FormData();
+    formData.append("file", blob, "live.jpg");
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/run-live",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      console.log("Full classification output (live):", response.data.output);
+      setPopupData({
+        image: imageDataUrl,
+        results: parseResults(response.data.output),
+      });
+    } catch (err) {
+      console.error("Error sending captured image to backend:", err);
+    }
+    setLoading(false);
+    setLoadingMessage("");
+  };
+
+  // Handler for Static Image classification.
   const handleStaticImages = async (event) => {
     const files = event.target.files;
     if (!files.length) return;
-
+    setLoading(true);
+    setLoadingMessage("Uploading image...");
+    const file = files[0];
+    const previewURL = URL.createObjectURL(file);
     const formData = new FormData();
-    // Use the key "file" to match the Flask endpoint expecting "file"
-    formData.append("file", files[0]);
-
+    formData.append("file", file);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setLoadingMessage("Classifying image...");
     try {
       const response = await fetch("http://localhost:5000/run-static", {
         method: "POST",
         body: formData,
       });
       const data = await response.json();
-      console.log("Static test output:", data.output);
+      console.log("Full classification output (static):", data.output);
+      setPopupData({
+        image: previewURL,
+        results: parseResults(data.output),
+      });
     } catch (error) {
       console.error("Error running static test:", error);
     }
+    setLoading(false);
+    setLoadingMessage("");
   };
 
   return (
@@ -149,15 +202,6 @@ const Home = () => {
             style={{ display: "none" }}
           />
         </div>
-
-        {result && (
-          <div className="mt-4 p-4 bg-white shadow rounded">
-            <h2 className="text-xl font-bold">Classification Result:</h2>
-            <pre className="text-gray-800">
-              {JSON.stringify(result, null, 2)}
-            </pre>
-          </div>
-        )}
       </div>
 
       {/* Sidebar toggle button */}
@@ -173,6 +217,26 @@ const Home = () => {
         onClose={() => setSidebarOpen(false)}
         onToggle={toggleSidebar}
       />
+
+      {/* Loading overlay with spinner and message */}
+      {loading && <LoadingOverlay message={loadingMessage} />}
+
+      {/* Webcam modal for manual capture */}
+      {showWebcamModal && (
+        <WebcamModal
+          onCapture={handleWebcamCapture}
+          onClose={() => setShowWebcamModal(false)}
+        />
+      )}
+
+      {/* Popup overlay card */}
+      {popupData && (
+        <PopUpCard
+          image={popupData.image}
+          results={popupData.results}
+          onClose={() => setPopupData(null)}
+        />
+      )}
     </div>
   );
 };
