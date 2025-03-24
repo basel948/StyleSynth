@@ -204,20 +204,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Sidebar toggle button */}
-      <button
-        className="absolute top-4 left-4 z-30 bg-gray-900 bg-opacity-70 backdrop-blur-sm text-white p-2 rounded-md hover:bg-gray-800 transition-colors"
-        onClick={toggleSidebar}
-      >
-        <Menu size={24} />
-      </button>
-
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onToggle={toggleSidebar}
-      />
-
       {/* Loading overlay with spinner and message */}
       {loading && <LoadingOverlay message={loadingMessage} />}
 
