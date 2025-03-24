@@ -6,7 +6,9 @@ import {
   Settings,
   Home as HomeIcon,
   HelpCircle,
+  Scissors,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Sidebar = ({ isOpen, onClose, onToggle }) => {
   return (
@@ -15,60 +17,55 @@ const Sidebar = ({ isOpen, onClose, onToggle }) => {
         isOpen ? "w-64" : "w-16"
       }`}
     >
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <button
-            className={`text-white hover:text-gray-300 transition-opacity duration-300 ${
-              isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-            }`}
-            onClick={onToggle}
-          >
-            <X size={24} />
-          </button>
-        </div>
+      <div className="flex flex-col h-full p-4">
+        {/* Top Section */}
+        <div>
+          <div className="flex items-center justify-between">
+            <button
+              className={`text-white hover:text-gray-300 transition-opacity duration-300 ${
+                isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+              }`}
+              onClick={onToggle}
+            >
+              <X size={24} />
+            </button>
+          </div>
 
-        {/* Sidebar content */}
-        <div className="mt-8">
+          <div className="mt-8">
+            <ul className="space-y-4 font-subheading">
+              <li className="hover:bg-gray-800 p-2 rounded cursor-pointer flex items-center gap-3 text-white">
+                <Link to="/" className="flex items-center gap-3 w-full">
+                  <HomeIcon size={20} /> {isOpen && <span>Dashboard</span>}
+                </Link>
+              </li>
+              <li className="hover:bg-gray-800 p-2 rounded cursor-pointer flex items-center gap-3 text-white">
+                <Link
+                  to="/manual-tryon"
+                  className="flex items-center gap-3 w-full"
+                >
+                  <Scissors size={20} />
+                  {isOpen && <span>Manual Try On</span>}
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+        {/* Bottom Section */}
+        <div className="mt-auto">
+          {/* Separator */}
+          <div className="border-t border-gray-700 my-4"></div>
           <ul className="space-y-4 font-subheading">
             <li className="hover:bg-gray-800 p-2 rounded cursor-pointer flex items-center gap-3 text-white">
-              <HomeIcon size={20} />
-              <span
-                className={`transition-opacity duration-300 ${
-                  isOpen ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                Dashboard
-              </span>
-            </li>
-            <li className="hover:bg-gray-800 p-2 rounded cursor-pointer flex items-center gap-3 text-white">
               <User size={20} />
-              <span
-                className={`transition-opacity duration-300 ${
-                  isOpen ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                Profile
-              </span>
+              {isOpen && <span>Profile</span>}
             </li>
             <li className="hover:bg-gray-800 p-2 rounded cursor-pointer flex items-center gap-3 text-white">
               <Settings size={20} />
-              <span
-                className={`transition-opacity duration-300 ${
-                  isOpen ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                Settings
-              </span>
+              {isOpen && <span>Settings</span>}
             </li>
             <li className="hover:bg-gray-800 p-2 rounded cursor-pointer flex items-center gap-3 text-white">
               <HelpCircle size={20} />
-              <span
-                className={`transition-opacity duration-300 ${
-                  isOpen ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                Help
-              </span>
+              {isOpen && <span>Help</span>}
             </li>
           </ul>
         </div>
