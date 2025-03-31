@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import Sidebar from "./Sidebar";
+import FiltersPanel from "./FiltersPanel";
 import HairstyleFilter from "./HairstyleFilter";
 import LiveWebcam from "./LiveWebcam";
-import FaceShapeMenu from "./FaceShapeMenu";
 import HairstyleSlider from "./HairstyleSlider";
 
 const hairstyleOptions = {
@@ -36,6 +35,7 @@ const hairstyleOptions = {
 function LiveTryOn() {
   const [selectedFaceShape, setSelectedFaceShape] = useState(null);
   const [selectedHairstyle, setSelectedHairstyle] = useState(null);
+  const [selectedFilter, setSelectedFilter] = useState(null);
   const [filter, setFilter] = useState({});
 
   const handleShapeClick = (shape) => {
@@ -47,6 +47,11 @@ function LiveTryOn() {
       setSelectedFaceShape(shape);
       setSelectedHairstyle(null);
     }
+  };
+
+  const handleFilterSelect = (filter) => {
+    setSelectedFilter(filter);
+    console.log("Selected filter:", filter);
   };
 
   const handleHairstyleClick = (hairstyle) => {
@@ -72,10 +77,9 @@ function LiveTryOn() {
 
           {/* Try-On Section */}
           <div className="flex-grow">
-            <LiveWebcam selectedHairstyle={selectedHairstyle} />
-            <FaceShapeMenu
-              selectedFaceShape={selectedFaceShape}
-              onShapeClick={handleShapeClick}
+            <LiveWebcam
+              selectedHairstyle={selectedHairstyle}
+              selectedFilter={selectedFilter}
             />
             {selectedFaceShape && (
               <HairstyleSlider
@@ -85,6 +89,10 @@ function LiveTryOn() {
                 onHairstyleClick={handleHairstyleClick}
               />
             )}
+            <FiltersPanel
+              selectedFilter={selectedFilter?.id}
+              onFilterSelect={handleFilterSelect}
+            />
           </div>
         </div>
       </div>
